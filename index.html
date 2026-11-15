@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Body Speed Test</title>
+<style>
+/* Layout: one narrow instrument column; the verdict on top, the readings below it. */
+:root {
+  --bg: #f3f5f7; --surface: #ffffff; --fg: #17202a; --muted: #5b6876; --line: #d5dbe2;
+  --accent: #0b6e8a; --on-accent: #ffffff; --good: #1d7a46; --warn: #8a5800; --bad: #b3261e;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #10151a; --surface: #182028; --fg: #e6ebf0; --muted: #96a3b0; --line: #2a343f;
+  --accent: #5cc4e0; --on-accent: #06222b; --good: #5fcf8e; --warn: #e0b050; --bad: #ff8a80; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #10151a; --surface: #182028; --fg: #e6ebf0; --muted: #96a3b0; --line: #2a343f;
+  --accent: #5cc4e0; --on-accent: #06222b; --good: #5fcf8e; --warn: #e0b050; --bad: #ff8a80; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 16px/1.5 var(--sans);
+  padding-block: 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 40rem; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+h1 { font-size: 1.5rem; line-height: 1.2; margin: 0; text-wrap: balance; }
+h2 { font-size: 1rem; margin: 0; }
+p { margin: 0; }
+.muted { color: var(--muted); font-size: 0.875rem; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+button { font: 600 1rem var(--sans); border-radius: 8px; border: 1px solid var(--accent); padding: 12px 18px; cursor: pointer; }
+button.primary { background: var(--accent); color: var(--on-accent); }
+button.plain { background: transparent; color: var(--accent); }
+button:disabled { opacity: 0.55; cursor: default; }
+button:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+#verdictNumber { font: 700 2.5rem/1.1 var(--mono); font-variant-numeric: tabular-nums; }
+.chip { display: inline-block; font-size: 0.875rem; font-weight: 600; padding: 2px 10px; border-radius: 999px; border: 1px solid currentColor; }
+.good { color: var(--good); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; white-space: normal; min-width: 9rem; }
+th { color: var(--muted); font-weight: 600; }
+td { font-variant-numeric: tabular-nums; }
+td.num { font-family: var(--mono); }
+pre { margin: 0; font: 0.8125rem/1.45 var(--mono); white-space: pre-wrap; word-break: break-word; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; user-select: all; }
+</style>
+<main>
+  <h1>Body Speed Test</h1>
+  <p>This page times a synthetic body on the device you are holding: a beating heart with valves, parallel vascular beds, many substances carried by the blood, and a chemistry solve in every compartment. It is a measure of computing cost, not physiology.</p>
+
+  <section class="panel" aria-labelledby="runTitle">
+    <h2 id="runTitle">Run it on this device</h2>
+    <p class="muted">Six bodies of growing size, about one minute in all. Keep the page open and the screen on until it finishes.</p>
+    <div class="row">
+      <button id="run" class="primary" type="button">Run the test</button>
+      <span id="status" role="status" class="muted">Not run yet on this device.</span>
+    </div>
+  </section>
+
+  <section class="panel" id="verdict" hidden aria-labelledby="verdictTitle">
+    <h2 id="verdictTitle">Largest body: 32 beds, 100 substances, 1 ms step</h2>
+    <div class="row">
+      <span id="verdictNumber">–</span>
+      <span id="verdictChip" class="chip">–</span>
+    </div>
+    <p class="muted">Times faster than real time on this device. Five or more is comfortable. On the iMac this body ran 7.6 times faster than real time in Chromium and 12 times in Safari's engine.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="tableTitle">
+    <h2 id="tableTitle">Readings</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th scope="col">Body</th><th scope="col">Step</th><th scope="col">Computing per simulated second</th><th scope="col">Against real time</th><th scope="col">Stable</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="5" class="muted">The six readings appear here as each body finishes.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" id="share" hidden aria-labelledby="shareTitle">
+    <h2 id="shareTitle">Send the result back</h2>
+    <p class="muted">Copy this text and paste it into the conversation.</p>
+    <pre id="report" tabindex="0"></pre>
+    <div class="row"><button id="copy" class="plain" type="button">Copy the result</button><span id="copied" role="status" class="muted"></span></div>
+  </section>
+</main>
+<script>
+// Synthetic body for a speed measurement. NOT physiology: a network of the right shape and cost.
+// Units: mmHg, mL, s. Plain script: defines globalThis.SpeedTest, and module.exports under Node.
+(function (root) {
+  'use strict';
+
+  const RA = 0, RV = 1, PA = 2, PCAP = 3, PV = 4, LV = 5, AO1 = 6, AO2 = 7, AO3 = 8, SVC = 9, IVC = 10, NFIX = 11;
+  const RES = 0, VALVE = 1, INERT = 2, COLLAPSE = 3;
+  const HR_PERIOD = 0.8, T_SYS = 0.3, P_EXT_IVC = 5;
+  const O2 = 0, CO2 = 1;
+  const VO2 = 4, KM_O2 = 0.002, RQ = 0.8, DL_O2 = 0.4, DL_CO2 = 4, PA_O2 = 100, PA_CO2 = 40;
+  const HB_CAP = 0.201, SOL_O2 = 3e-5, K_CO2 = 0.5 / Math.pow(40, 0.37) / 1.04;
+  const KON = 1, KOFF = 0.5;
+
+  function buildBody(cfg) {
+    const B = cfg.beds, S = cfg.substances, dt = cfg.dt, netSub = cfg.netSub || 1;
+    const N = NFIX + 3 * B, M = N + 2 * B;
+    const names = ['RA', 'RV', 'PA', 'PCAP', 'PV+LA', 'LV', 'AO1', 'AO2', 'AO3', 'SVC', 'IVC'];
+    for (let b = 0; b < B; b++) names.push('bed' + b + '.art', 'bed' + b + '.cap', 'bed' + b + '.ven');
+    const C = new Float64Array(N), V0 = new Float64Array(N), V = new Float64Array(N), Vold = new Float64Array(N);
+    const P = new Float64Array(N);
+    function comp(i, c, v0, p) { C[i] = c; V0[i] = v0; V[i] = v0 + c * p; }
+    comp(RA, 4, 30, 4); comp(PA, 2.5, 80, 15); comp(PCAP, 3, 100, 10); comp(PV, 8, 200, 8);
+    comp(AO1, 0.3, 30, 90); comp(AO2, 0.35, 60, 90); comp(AO3, 0.5, 60, 88); comp(SVC, 15, 200, 6); comp(IVC, 15, 300, 7);
+    const elast = { LV: [0.08, 2.5, 10], RV: [0.05, 0.55, 10] };
+    V[LV] = 120; V0[LV] = elast.LV[2]; V[RV] = 120; V0[RV] = elast.RV[2];
+    for (let b = 0; b < B; b++) {
+      const a = NFIX + 3 * b;
+      comp(a, 0.6 / B, 300 / B, 80); comp(a + 1, 2 / B, 300 / B, 25); comp(a + 2, 50 / B, 2500 / B, 8);
+    }
+    const ea = [], eb = [], et = [], eR = [], eL = [], en = [];
+    function edge(a, b, type, R, L, name) { ea.push(a); eb.push(b); et.push(type); eR.push(R); eL.push(L || 0); en.push(name); }
+    edge(RA, RV, VALVE, 0.004, 0, 'tricuspid'); edge(RV, PA, VALVE, 0.004, 0, 'pulmonary valve');
+    edge(PA, PCAP, INERT, 0.06, 0.0002, 'PA->PCAP'); edge(PCAP, PV, RES, 0.04, 0, 'PCAP->PV');
+    edge(PV, LV, VALVE, 0.004, 0, 'mitral'); edge(LV, AO1, VALVE, 0.01, 0, 'aortic valve');
+    edge(AO1, AO2, INERT, 0.01, 0.0005, 'AO1->AO2'); edge(AO2, AO3, INERT, 0.02, 0.001, 'AO2->AO3');
+    for (let b = 0; b < B; b++) {
+      const a = NFIX + 3 * b, half = Math.max(1, B / 2);
+      edge(b % 2 ? AO3 : AO2, a, RES, 0.05 * B, 0, 'AO->bed' + b);
+      edge(a, a + 1, RES, 0.7 * B, 0, 'bed' + b + ' art->cap');
+      edge(a + 1, a + 2, RES, 0.2 * B, 0, 'bed' + b + ' cap->ven');
+      edge(a + 2, b < B / 2 ? SVC : IVC, RES, 0.08 * half, 0, 'bed' + b + ' ven->VC');
+    }
+    edge(SVC, RA, RES, 0.005, 0, 'SVC->RA'); edge(IVC, RA, COLLAPSE, 0.005, 0, 'IVC->RA (collapsible)');
+    const E = ea.length;
+    const Ea = Int32Array.from(ea), Eb = Int32Array.from(eb), Et = Uint8Array.from(et);
+    const ER = Float64Array.from(eR), EL = Float64Array.from(eL), Q = new Float64Array(E), Qdt = new Float64Array(E);
+    const outFrac = new Float64Array(N);
+
+    // Tissue sub-compartments: interstitial N+b, cell N+B+b (fixed volumes).
+    const Vt = new Float64Array(2 * B);
+    for (let b = 0; b < B; b++) { Vt[b] = 12000 / B; Vt[B + b] = 25000 / B; }
+
+    // Substances: the first nPresent are present everywhere, the rest absent everywhere.
+    const nPresent = Math.max(2, Math.min(S, Math.round(cfg.present * S)));
+    const list = Int32Array.from({ length: cfg.track ? nPresent : S }, (_, i) => i);
+    const PS1 = new Float64Array(S), PS2 = new Float64Array(S);
+    for (let s = 0; s < S; s++) {
+      const f = 0.2 + 0.08 * ((s * 7) % 10);
+      PS1[s] = (s < 2 ? 50 : 200) * f / B; PS2[s] = (s < 2 ? 50 : 100) * f / B;
+    }
+    const pairs = [];
+    for (let k = 0; k < Math.min(3, Math.floor((nPresent - 2) / 3)); k++) pairs.push([2 + 3 * k, 3 + 3 * k, 4 + 3 * k]);
+    const isComplex = new Uint8Array(S), partOf = [];
+    for (const [a, b, c] of pairs) { isComplex[c] = 1; partOf[a] = c; partOf[b] = c; }
+    const A = new Float64Array(S * M), conc = new Float64Array(M);
+    for (let s = 0; s < nPresent; s++) {
+      for (let i = 0; i < M; i++) {
+        const vol = i < N ? V[i] : Vt[i - N];
+        let c;
+        if (s === O2) c = i < N ? 0.19 : 0.15;
+        else if (s === CO2) c = i < N ? 0.5 : 0.52;
+        else if (isComplex[s]) c = 0;
+        else c = 1 + 0.5 * Math.sin(i * 1.3 + s * 0.7);
+        A[s * M + i] = vol * c;
+      }
+    }
+    const PO2 = new Float64Array(N).fill(60), PCO2 = new Float64Array(N).fill(45);
+    const total0 = new Float64Array(S), ext = new Float64Array(S), sums = new Float64Array(S);
+    for (let s = 0; s < S; s++) { let t = 0; for (let i = 0; i < M; i++) t += A[s * M + i]; total0[s] = t; }
+    const conserved0 = new Float64Array(S);
+    for (let s = 0; s < S; s++) conserved0[s] = total0[s] + (partOf[s] !== undefined ? total0[partOf[s]] : 0);
+    let vol0 = 0; for (let i = 0; i < N; i++) vol0 += V[i];
+
+    // Stiffness estimate for the explicit network: for each edge the eigenvalue (E_a + E_b)/R of the two-node pair.
+    let stiff = { lambda: 0, edge: '' };
+    for (let e = 0; e < E; e++) {
+      if (Et[e] === INERT) continue;
+      // A valve conducts only in one phase: an inflow valve while its chamber relaxes, an outflow valve while it contracts.
+      const ef = (i) => i === LV ? elast.LV[Eb[e] === LV ? 0 : 1] : i === RV ? elast.RV[Eb[e] === RV ? 0 : 1] : 1 / C[i];
+      const l = (ef(Ea[e]) + ef(Eb[e])) / ER[e];
+      if (l > stiff.lambda) stiff = { lambda: l, edge: en[e] };
+    }
+
+    const st = { t: 0, chemIter: 0, chemMaxIter: 0, chemFail: 0, cflMax: 0, minAmount: Infinity, balanceErr: 0,
+      volErr: 0, balanceFail: 0, valveFlips: 0, cflAt: -1, pMax: -Infinity, pMin: Infinity, diverged: false, aoSum: 0, coSum: 0, lvMax: 0, nObs: 0 };
+
+    function elastance(t, e) {
+      const tc = t % HR_PERIOD;
+      const act = tc < T_SYS ? Math.sin(Math.PI * tc / T_SYS) : 0;
+      return e[0] + (e[1] - e[0]) * act;
+    }
+
+    function network() {
+      Vold.set(V);
+      Qdt.fill(0);
+      const h = dt / netSub;
+      for (let k = 0; k < netSub; k++) {
+        const t = st.t + k * h;
+        for (let i = 0; i < N; i++) P[i] = (V[i] - V0[i]) / C[i];
+        P[LV] = elastance(t, elast.LV) * (V[LV] - V0[LV]);
+        P[RV] = elastance(t, elast.RV) * (V[RV] - V0[RV]);
+        for (let e = 0; e < E; e++) {
+          const a = Ea[e], b = Eb[e], dp = P[a] - P[b];
+          let q;
+          switch (Et[e]) {
+            case RES: q = dp / ER[e]; break;
+            case VALVE: q = dp > 0 ? dp / ER[e] : 0; break;
+            case INERT: q = (Q[e] + h * dp / EL[e]) / (1 + h * ER[e] / EL[e]); break;
+            default: { const d = P[a] - Math.max(P[b], P_EXT_IVC); q = d > 0 ? d / ER[e] : 0; }
+          }
+          if (Et[e] === VALVE && (q > 0) !== (Q[e] > 0)) st.valveFlips++;
+          Q[e] = q;
+          const v = q * h;
+          V[a] -= v; V[b] += v; Qdt[e] += v;
+        }
+      }
+      outFrac.fill(0);
+      for (let e = 0; e < E; e++) {
+        const q = Qdt[e];
+        if (q >= 0) outFrac[Ea[e]] += q; else outFrac[Eb[e]] -= q;
+      }
+      for (let i = 0; i < N; i++) {
+        const f = outFrac[i] / Vold[i];
+        if (f > st.cflMax) { st.cflMax = f; st.cflAt = i; }
+        const p = P[i];
+        if (!(p < 1000 && p > -1000) || !(V[i] > 0)) st.diverged = true;
+        if (p > st.pMax) st.pMax = p;
+        if (p < st.pMin) st.pMin = p;
+      }
+      st.aoSum += P[AO1]; st.coSum += Qdt[5] / dt; if (P[LV] > st.lvMax) st.lvMax = P[LV]; st.nObs++;
+    }
+
+    function transport() {
+      const L = list.length;
+      for (let k = 0; k < L; k++) {
+        const s = list[k], base = s * M;
+        for (let i = 0; i < N; i++) conc[i] = A[base + i] / Vold[i];
+        for (let i = 0; i < 2 * B; i++) conc[N + i] = A[base + N + i] / Vt[i];
+        for (let e = 0; e < E; e++) {
+          const q = Qdt[e];
+          if (q >= 0) { const f = q * conc[Ea[e]]; A[base + Ea[e]] -= f; A[base + Eb[e]] += f; }
+          else { const f = -q * conc[Eb[e]]; A[base + Eb[e]] -= f; A[base + Ea[e]] += f; }
+        }
+        const p1 = PS1[s] * dt, p2 = PS2[s] * dt;
+        for (let b = 0; b < B; b++) {
+          const cap = NFIX + 3 * b + 1, isf = N + b, cell = N + B + b;
+          const f1 = p1 * (conc[cap] - conc[isf]), f2 = p2 * (conc[isf] - conc[cell]);
+          A[base + cap] -= f1; A[base + isf] += f1 - f2; A[base + cell] += f2;
+        }
+      }
+      for (let b = 0; b < B; b++) {
+        const cell = N + B + b, c = A[O2 * M + cell] / Vt[B + b];
+        const r = VO2 / B * c / (c + KM_O2) * dt;
+        A[O2 * M + cell] -= r; A[CO2 * M + cell] += RQ * r; ext[O2] -= r; ext[CO2] += RQ * r;
+      }
+    }
+
+    function contents(lp, lc, out) {
+      const po2 = Math.exp(lp), pco2 = Math.exp(lc);
+      const p50 = 26.8 * Math.pow(pco2 / 40, 0.2);
+      const r = Math.pow(po2 / p50, 2.7), sat = r / (1 + r);
+      out[0] = HB_CAP * sat + SOL_O2 * po2;
+      out[1] = K_CO2 * (1 + 0.15 * (1 - sat)) * Math.pow(pco2, 0.37);
+    }
+    const f0 = new Float64Array(2), fx = new Float64Array(2), fy = new Float64Array(2);
+    function solveGas(i) {
+      const tO2 = A[O2 * M + i] / V[i], tCO2 = A[CO2 * M + i] / V[i];
+      let x = Math.log(PO2[i]), y = Math.log(PCO2[i]), it = 0;
+      const hd = 1e-7;
+      for (; it < 40; it++) {
+        contents(x, y, f0);
+        const F1 = f0[0] - tO2, F2 = f0[1] - tCO2;
+        if (Math.abs(F1) < 1e-11 * (tO2 + 1e-3) && Math.abs(F2) < 1e-11 * tCO2) break;
+        contents(x + hd, y, fx); contents(x, y + hd, fy);
+        const j11 = (fx[0] - f0[0]) / hd, j21 = (fx[1] - f0[1]) / hd, j12 = (fy[0] - f0[0]) / hd, j22 = (fy[1] - f0[1]) / hd;
+        const det = j11 * j22 - j12 * j21;
+        let dx = -(F1 * j22 - F2 * j12) / det, dy = -(j11 * F2 - j21 * F1) / det;
+        if (dx > 2) dx = 2; else if (dx < -2) dx = -2;
+        if (dy > 2) dy = 2; else if (dy < -2) dy = -2;
+        x += dx; y += dy;
+      }
+      if (it === 40 || !(x === x)) st.chemFail++;
+      st.chemIter += it; if (it > st.chemMaxIter) st.chemMaxIter = it;
+      PO2[i] = Math.exp(x); PCO2[i] = Math.exp(y);
+    }
+
+    function chemistry() {
+      for (let i = 0; i < N; i++) solveGas(i);
+      let f = DL_O2 * (PA_O2 - PO2[PCAP]) * dt;
+      if (f < -0.5 * A[O2 * M + PCAP]) f = -0.5 * A[O2 * M + PCAP];
+      A[O2 * M + PCAP] += f; ext[O2] += f;
+      f = DL_CO2 * (PA_CO2 - PCO2[PCAP]) * dt;
+      if (f < -0.5 * A[CO2 * M + PCAP]) f = -0.5 * A[CO2 * M + PCAP];
+      A[CO2 * M + PCAP] += f; ext[CO2] += f;
+      for (let k = 0; k < pairs.length; k++) {
+        const ba = pairs[k][0] * M, bb = pairs[k][1] * M, bc = pairs[k][2] * M;
+        for (let i = 0; i < N; i++) {
+          const v = V[i], na = A[ba + i], nb = A[bb + i], nc = A[bc + i];
+          let x = (KON * (na / v) * (nb / v) - KOFF * (nc / v)) * v * dt;
+          if (x > 0.5 * Math.min(na, nb)) x = 0.5 * Math.min(na, nb); else if (x < -0.5 * nc) x = -0.5 * nc;
+          A[ba + i] = na - x; A[bb + i] = nb - x; A[bc + i] = nc + x;
+        }
+      }
+    }
+
+    function balance() {
+      const L = list.length;
+      let minA = st.minAmount;
+      for (let k = 0; k < L; k++) {
+        const s = list[k], base = s * M;
+        let t = 0;
+        for (let i = 0; i < M; i++) { const a = A[base + i]; t += a; if (a < minA) minA = a; }
+        sums[s] = t;
+      }
+      st.minAmount = minA;
+      let worst = 0;
+      for (let k = 0; k < L; k++) {
+        const s = list[k];
+        if (isComplex[s]) continue;
+        const now = sums[s] + (partOf[s] !== undefined ? sums[partOf[s]] : 0) - ext[s];
+        const err = Math.abs(now - conserved0[s]) / (Math.abs(conserved0[s]) + 1e-300);
+        if (err > worst) worst = err;
+      }
+      let vol = 0; for (let i = 0; i < N; i++) vol += V[i];
+      const ve = Math.abs(vol - vol0) / vol0;
+      if (worst > st.balanceErr) st.balanceErr = worst;
+      if (ve > st.volErr) st.volErr = ve;
+      if (worst > 1e-9 || ve > 1e-9) st.balanceFail++;
+    }
+
+    const stateBytes = [C, V0, V, Vold, P, Ea, Eb, Et, ER, EL, Q, Qdt, outFrac, Vt, PS1, PS2, A, conc, PO2, PCO2, total0, ext, sums, conserved0]
+      .reduce((n, a) => n + a.byteLength, 0);
+    return { N, M, E, B, S, nPresent, pairs: pairs.length, listLen: list.length, stiff, st, stateBytes, names,
+      network, transport, chemistry, balance };
+  }
+
+  function now() { return (typeof performance !== 'undefined' ? performance : root.performance).now(); }
+
+  // Runs one configuration: warmup seconds untimed (still checked), then measure seconds timed per step.
+  function runConfig(cfg, opts) {
+    opts = opts || {};
+    const warm = opts.warmup ?? 5, meas = opts.measure ?? 30, wallLimit = opts.wallLimitMs ?? 180000;
+    const body = buildBody(cfg), st = body.st, dt = cfg.dt;
+    const nWarm = Math.round(warm / dt), nMeas = Math.round(meas / dt);
+    const stepT = new Float64Array(nMeas);
+    const phase = new Float64Array(4);
+    const wall0 = now();
+    let aborted = false, done = 0;
+    for (let k = 0; k < nWarm + nMeas; k++) {
+      const t0 = now();
+      body.network(); const t1 = now();
+      body.transport(); const t2 = now();
+      body.chemistry(); const t3 = now();
+      body.balance(); const t4 = now();
+      st.t += dt;
+      if (k >= nWarm) {
+        stepT[k - nWarm] = t4 - t0;
+        phase[0] += t1 - t0; phase[1] += t2 - t1; phase[2] += t3 - t2; phase[3] += t4 - t3;
+        done = k - nWarm + 1;
+      }
+      if (st.diverged) break;
+      if ((k & 255) === 0 && t4 - wall0 > wallLimit) { aborted = true; break; }
+    }
+    const measWall = done ? stepT.subarray(0, done).reduce((a, b) => a + b, 0) : 0;
+    const sorted = Float64Array.from(stepT.subarray(0, done)).sort();
+    const pct = (q) => done ? sorted[Math.min(done - 1, Math.floor(q * done))] : NaN;
+    const simMeasured = done * dt;
+    const stable = !st.diverged && st.minAmount > -1e-9 && st.balanceFail === 0 && st.chemFail === 0 && st.cflMax < 1;
+    return {
+      cfg, N: body.N, M: body.M, edges: body.E, nPresent: body.nPresent, loopedSubstances: body.listLen, pairs: body.pairs,
+      stable, diverged: st.diverged, divergedAtS: st.diverged ? +st.t.toFixed(4) : null, aborted,
+      simulatedMeasuredS: simMeasured,
+      msPerSimS: simMeasured ? measWall / simMeasured : NaN,
+      meanStepMs: done ? measWall / done : NaN, p99StepMs: pct(0.99), maxStepMs: done ? sorted[done - 1] : NaN,
+      phaseShare: measWall ? Array.from(phase, (x) => x / measWall) : null,
+      phaseMsPerSimS: simMeasured ? Array.from(phase, (x) => x / simMeasured) : null,
+      stateBytes: body.stateBytes, stepLogBytes: stepT.byteLength,
+      cflMax: st.cflMax, cflCompartment: st.cflAt >= 0 ? body.names[st.cflAt] : null,
+      valveFlipsPerValvePerBeat: st.valveFlips / 4 / (st.t / HR_PERIOD), minAmount: st.minAmount, balanceErrMax: st.balanceErr, volErrMax: st.volErr, balanceFailSteps: st.balanceFail,
+      chemMeanIter: st.chemIter / Math.max(1, (st.t / dt) * body.N), chemMaxIter: st.chemMaxIter, chemFail: st.chemFail,
+      pRange: [st.pMin, st.pMax], meanAO1: st.aoSum / st.nObs, meanCO_mLs: st.coSum / st.nObs, maxPLV: st.lvMax,
+      stiffEdge: body.stiff.edge, stiffLambda: body.stiff.lambda, explicitDtLimitMs: 2000 / body.stiff.lambda,
+    };
+  }
+
+  function sweepConfigs(full) {
+    const out = [];
+    const beds = full ? [8, 16, 32] : [8, 32], subs = full ? [10, 30, 60, 100] : [10, 100];
+    const modes = [{ present: 1, track: false }, { present: 0.3, track: false }, { present: 0.3, track: true }];
+    for (const b of beds) out.push({ beds: b, substances: 10, present: 1, track: false, dt: 0.001, netSub: 10, ref: true });
+    for (const b of beds) for (const s of subs) for (const m of modes) for (const dtms of [1, 2, 5])
+      out.push({ beds: b, substances: s, present: m.present, track: m.track, dt: dtms / 1000, netSub: 1 });
+    return out;
+  }
+
+  // Fixed inputs, built with exactly rounded arithmetic only, so they are bit-identical in every engine.
+  function mathInputs() {
+    const n = 1000, lin = (a, b, i) => a + (b - a) * (i / (n - 1));
+    let seed = 12345;
+    const u = () => { seed = (Math.imul(seed, 1103515245) + 12345) >>> 0; return seed / 4294967296; };
+    const pick = (a, b, i) => (i % 2 ? lin(a, b, i) : a + (b - a) * u());
+    const ins = { exp: [], log: [], pow: [], sin: [], tanh: [], sqrt: [] };
+    for (let i = 0; i < n; i++) {
+      ins.exp.push(pick(-40, 40, i));
+      ins.log.push(Math.pow(2, Math.floor(pick(-30, 30, i))) * (1 + u()));
+      ins.pow.push([pick(0.01, 100, i), pick(-4, 4, n - 1 - i)]);
+      ins.sin.push(i < 950 ? pick(-20, 20, i) : 1e5 * (i - 940) + u());
+      ins.tanh.push(pick(-6, 6, i));
+      ins.sqrt.push(pick(0, 1e4, i));
+    }
+    return ins;
+  }
+  function hex(x) { const dv = new DataView(new ArrayBuffer(8)); dv.setFloat64(0, x); return dv.getBigUint64(0).toString(16).padStart(16, '0'); }
+  function mathVectors() {
+    const ins = mathInputs(), out = {};
+    for (const f of ['exp', 'log', 'sin', 'tanh', 'sqrt']) out[f] = ins[f].map((x) => [hex(x), hex(Math[f](x))]);
+    out.pow = ins.pow.map(([x, y]) => [hex(x) + ',' + hex(y), hex(Math.pow(x, y))]);
+    return out;
+  }
+  function timerResolution() {
+    let best = Infinity, last = now();
+    for (let i = 0; i < 200000; i++) { const t = now(); if (t !== last) { if (t - last < best) best = t - last; last = t; } }
+    return best;
+  }
+
+  const api = { buildBody, runConfig, sweepConfigs, mathVectors, timerResolution };
+  root.SpeedTest = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>
+(function () {
+  const RUNS = [
+    { label: '8 beds, 10 substances', cfg: { beds: 8, substances: 10, present: 1, track: false, dt: 0.001, netSub: 1 } },
+    { label: '16 beds, 30 substances', cfg: { beds: 16, substances: 30, present: 1, track: false, dt: 0.001, netSub: 1 } },
+    { label: '32 beds, 60 substances', cfg: { beds: 32, substances: 60, present: 1, track: false, dt: 0.001, netSub: 1 } },
+    { label: '32 beds, 100 substances', cfg: { beds: 32, substances: 100, present: 1, track: false, dt: 0.001, netSub: 1 }, headline: true },
+    { label: '32 beds, 100 substances, 30 present and tracked', cfg: { beds: 32, substances: 100, present: 0.3, track: true, dt: 0.001, netSub: 1 } },
+    { label: '32 beds, 100 substances, heart stepped ten times finer', cfg: { beds: 32, substances: 100, present: 1, track: false, dt: 0.005, netSub: 10 } },
+  ];
+  const OPTS = { warmup: 2, measure: 10, wallLimitMs: 60000 };
+  const $ = (id) => document.getElementById(id);
+  const rows = $('rows'), status = $('status'), runBtn = $('run');
+
+  function cell(tr, text, cls) { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); }
+  function addRow(run, r) {
+    const tr = document.createElement('tr'), x = 1000 / r.msPerSimS;
+    cell(tr, run.label);
+    cell(tr, (run.cfg.dt * 1000) + ' ms', 'num');
+    cell(tr, r.msPerSimS.toFixed(0) + ' ms', 'num');
+    cell(tr, x.toFixed(1) + '×' + (r.aborted ? ' (stopped early)' : ''), 'num');
+    cell(tr, r.stable ? 'yes' : 'NO');
+    rows.appendChild(tr);
+  }
+  function verdict(r) {
+    const x = 1000 / r.msPerSimS, chip = $('verdictChip');
+    $('verdictNumber').textContent = x.toFixed(1) + '×';
+    const kind = x >= 5 ? 'good' : x >= 2 ? 'warn' : 'bad';
+    chip.className = 'chip ' + kind;
+    chip.textContent = x >= 5 ? 'Comfortable' : x >= 2 ? 'Tight' : x >= 1 ? 'Barely real time' : 'Slower than real time';
+    $('verdict').hidden = false;
+  }
+  function report(results) {
+    const nav = navigator, lines = ['Body speed test'];
+    lines.push('Device: ' + nav.userAgent);
+    lines.push('Cores reported: ' + (nav.hardwareConcurrency || 'unknown') + (nav.deviceMemory ? ', memory reported: ' + nav.deviceMemory + ' GB' : ''));
+    lines.push('Timer resolution: ' + SpeedTest.timerResolution().toFixed(3) + ' ms');
+    results.forEach(function (it) {
+      const r = it.r;
+      lines.push(it.run.label + ' | step ' + (it.run.cfg.dt * 1000) + ' ms | ' + r.msPerSimS.toFixed(1) + ' ms per simulated second | '
+        + (1000 / r.msPerSimS).toFixed(2) + 'x real time | worst step ' + r.maxStepMs.toFixed(1) + ' ms | stable ' + (r.stable ? 'yes' : 'NO') + (r.aborted ? ' | stopped early' : ''));
+    });
+    $('report').textContent = lines.join('\n');
+    $('share').hidden = false;
+  }
+  async function run() {
+    runBtn.disabled = true; rows.textContent = ''; $('verdict').hidden = true; $('share').hidden = true; $('copied').textContent = '';
+    const results = [];
+    for (let i = 0; i < RUNS.length; i++) {
+      status.textContent = 'Running body ' + (i + 1) + ' of ' + RUNS.length + '…';
+      await new Promise(function (res) { setTimeout(res, 60); });
+      let r;
+      try { r = SpeedTest.runConfig(RUNS[i].cfg, OPTS); }
+      catch (e) { status.textContent = 'The test stopped on body ' + (i + 1) + ': ' + e.message + '. Reload the page and run it again.'; runBtn.disabled = false; return; }
+      results.push({ run: RUNS[i], r: r });
+      addRow(RUNS[i], r);
+      if (RUNS[i].headline) verdict(r);
+    }
+    status.textContent = 'Finished. Six bodies measured.';
+    report(results);
+    runBtn.disabled = false; runBtn.textContent = 'Run it again';
+  }
+  runBtn.addEventListener('click', run);
+  $('copy').addEventListener('click', function () {
+    const text = $('report').textContent, done = $('copied');
+    const fallback = function () {
+      const sel = window.getSelection(), range = document.createRange();
+      range.selectNodeContents($('report')); sel.removeAllRanges(); sel.addRange(range);
+      done.textContent = 'The text is selected. Copy it from the menu.';
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done.textContent = 'Copied.'; }, fallback);
+    else fallback();
+  });
+})();
+</script>
